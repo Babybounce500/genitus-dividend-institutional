@@ -97,6 +97,7 @@
       <th data-key="yieldPct">Yield</th><th data-key="streak">Streak</th><th data-key="count">Payments</th>
       <th data-key="streakScore">Streak-Score</th><th data-key="consistencyScore">Consistency-Score</th>
       <th data-key="stabilityScore">Stability-Score</th><th data-key="trackScore">Track-Score</th>
+      <th data-key="sector">Sector</th><th data-key="payoutRatio">Payout Ratio (vs. Sektor)</th>
     </tr></thead>
     <tbody id="screenerBody"></tbody>
   </table>
@@ -116,6 +117,7 @@
 <script>
   const SUMMARY_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-summary.csv';
   const HISTORY_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-history.csv';
+  const FUNDAMENTALS_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-fundamentals.csv';
 
   (function(){
     const KEY='genitusTheme:institutional';
@@ -149,13 +151,17 @@
 
   let summaryByExchange = new Map();
   let historyBySymbol = new Map();
+  let fundamentalsBySymbol = new Map();
+  let sectorPayoutMedian = new Map(); // Sector -> median payout ratio, built from whatever's enriched so far
   let cacheReady = null;
+  function median(arr){ const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
   function loadCache(){
     if(cacheReady) return cacheReady;
     cacheReady = Promise.all([
       fetch(SUMMARY_URL).then(r=>r.text()),
-      fetch(HISTORY_URL).then(r=>r.text())
-    ]).then(([sText,hText])=>{
+      fetch(HISTORY_URL).then(r=>r.text()),
+      fetch(FUNDAMENTALS_URL).then(r=>r.ok?r.text():'').catch(()=>'')
+    ]).then(([sText,hText,fText])=>{
       const sLines = sText.split('\n').filter(Boolean);
       for(let i=1;i<sLines.length;i++){
         const [fullSymbol,name,type,ex,count,streakYears,streakDir,yieldPct,price,lastDate,lastAmount,lastCurrency] = parseCSVLine(sLines[i]);
@@ -174,6 +180,30 @@
         if(!fullSymbol) continue;
         if(!historyBySymbol.has(fullSymbol)) historyBySymbol.set(fullSymbol, []);
         historyBySymbol.get(fullSymbol).push({ date, value:parseFloat(amount)||0, currency:currency||'', price: price?parseFloat(price):null, pctOfPrice: pct?parseFloat(pct):null });
+      }
+      if(fText){
+        const fLines = fText.split('\n').filter(Boolean);
+        const sectorPayouts = new Map();
+        for(let i=1;i<fLines.length;i++){
+          const [fullSymbol,yahooSymbol,sector,industry,payoutRatio,dividendYield,trailingPE,beta,targetMeanPrice,recommendationKey,numAnalysts,profitMargins,returnOnEquity,debtToEquity] = parseCSVLine(fLines[i]);
+          if(!fullSymbol) continue;
+          const pr = payoutRatio!=='' ? parseFloat(payoutRatio) : null;
+          fundamentalsBySymbol.set(fullSymbol, {
+            sector: sector||'', industry: industry||'',
+            payoutRatio: pr, dividendYield: dividendYield!==''?parseFloat(dividendYield):null,
+            trailingPE: trailingPE!==''?parseFloat(trailingPE):null, beta: beta!==''?parseFloat(beta):null,
+            targetMeanPrice: targetMeanPrice!==''?parseFloat(targetMeanPrice):null,
+            recommendationKey: recommendationKey||'', numAnalysts: numAnalysts!==''?parseInt(numAnalysts):null,
+            profitMargins: profitMargins!==''?parseFloat(profitMargins):null,
+            returnOnEquity: returnOnEquity!==''?parseFloat(returnOnEquity):null,
+            debtToEquity: debtToEquity!==''?parseFloat(debtToEquity):null,
+          });
+          if(sector && pr!=null && pr>=0 && pr<=3){ // guard against occasional garbage/negative-earnings ratios blowing up the median
+            if(!sectorPayouts.has(sector)) sectorPayouts.set(sector, []);
+            sectorPayouts.get(sector).push(pr);
+          }
+        }
+        sectorPayouts.forEach((arr,sector)=>sectorPayoutMedian.set(sector, median(arr)));
       }
     }).catch(e=>console.warn('Cache load failed:', e.message));
     return cacheReady;
@@ -255,7 +285,7 @@
     const rows = (summaryByExchange.get(ex)||[]).filter(r=>r.count>=minPay);
     scoredList = rows.map(r=>{
       const s = computeScore(r);
-      return {...r, score:s.total, factors:s};
+      return {...r, score:s.total, factors:s, fundamentals: fundamentalsBySymbol.get(r.fullSymbol) || null};
     });
     document.getElementById('screenerTable').style.display = scoredList.length ? 'table' : 'none';
     document.getElementById('emptyState').style.display = scoredList.length ? 'none' : 'block';
@@ -291,10 +321,26 @@
       else if(sortKey==='consistencyScore'){ av=a.factors.consistencyScore; bv=b.factors.consistencyScore; }
       else if(sortKey==='stabilityScore'){ av=a.factors.stabilityScore; bv=b.factors.stabilityScore; }
       else if(sortKey==='trackScore'){ av=a.factors.trackScore; bv=b.factors.trackScore; }
+      else if(sortKey==='sector'){ av=a.fundamentals?.sector||''; bv=b.fundamentals?.sector||''; }
+      else if(sortKey==='payoutRatio'){ av=a.fundamentals?.payoutRatio??-1; bv=b.fundamentals?.payoutRatio??-1; }
       if(typeof av==='string') return av.localeCompare(bv)*dir;
       return (av-bv)*dir;
     });
-    document.getElementById('screenerBody').innerHTML = rows.slice(0,500).map(r=>`
+    document.getElementById('screenerBody').innerHTML = rows.slice(0,500).map(r=>{
+      const f = r.fundamentals;
+      let payoutCell = '<span style="color:var(--muted);font-size:11px">nicht angereichert</span>';
+      if(f && f.payoutRatio!=null){
+        const sectorMed = sectorPayoutMedian.get(f.sector);
+        const pct = (f.payoutRatio*100).toFixed(0)+'%';
+        if(sectorMed!=null){
+          const diff = f.payoutRatio - sectorMed;
+          const cls = diff>0.15 ? 'chowder-lo' : '';
+          payoutCell = `${pct} <span style="color:var(--muted);font-size:10px">(Sektor-Median ${(sectorMed*100).toFixed(0)}%)</span>`;
+        } else {
+          payoutCell = pct;
+        }
+      }
+      return `
       <tr onclick="openReport('${r.fullSymbol}')">
         <td><span class="score-badge ${scoreClass(r.score)}">${r.score.toFixed(0)}</span></td>
         <td><span class="sym">${r.fullSymbol}</span></td>
@@ -306,13 +352,16 @@
         <td>${r.factors.consistencyScore.toFixed(1)}</td>
         <td>${r.factors.stabilityScore.toFixed(1)}</td>
         <td>${r.factors.trackScore.toFixed(1)}</td>
-      </tr>`).join('');
+        <td>${f?.sector || '<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+        <td>${payoutCell}</td>
+      </tr>`;
+    }).join('');
   }
 
   function exportCSV(){
     if(!scoredList.length) return;
-    const rows = scoredList.map(r=>[r.fullSymbol,r.name,r.type,r.ex,r.score.toFixed(1),r.yieldPct.toFixed(2),r.streakYears,r.streakDir,r.count,r.factors.streakScore.toFixed(1),r.factors.consistencyScore.toFixed(1),r.factors.stabilityScore.toFixed(1),r.factors.trackScore.toFixed(1)]);
-    const csv = 'Symbol,Name,Type,Exchange,QualityScore,YieldPct,StreakYears,StreakDirection,PaymentCount,StreakScore,ConsistencyScore,StabilityScore,TrackScore\n'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+    const rows = scoredList.map(r=>[r.fullSymbol,r.name,r.type,r.ex,r.score.toFixed(1),r.yieldPct.toFixed(2),r.streakYears,r.streakDir,r.count,r.factors.streakScore.toFixed(1),r.factors.consistencyScore.toFixed(1),r.factors.stabilityScore.toFixed(1),r.factors.trackScore.toFixed(1),r.fundamentals?.sector||'',r.fundamentals?.payoutRatio!=null?r.fundamentals.payoutRatio:'']);
+    const csv = 'Symbol,Name,Type,Exchange,QualityScore,YieldPct,StreakYears,StreakDirection,PaymentCount,StreakScore,ConsistencyScore,StabilityScore,TrackScore,Sector,PayoutRatio\n'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     a.download=`dividend_quality_screen_${document.getElementById('exSelect').value}.csv`;
@@ -358,6 +407,30 @@
           ${f.yearTotals.length>=2 ? ` Annual payout has moved between ${Math.min(...f.yearTotals).toFixed(2)} and ${Math.max(...f.yearTotals).toFixed(2)} (own currency) across ${f.yearTotals.length} tracked years.` : ''}
         </p>
       </div>
+
+      ${row.fundamentals ? `
+      <div class="report-section">
+        <h3>Fundamentals (Yahoo Finance, live-angereichert)</h3>
+        <div class="report-stat-grid">
+          <div class="rstat"><div class="lbl">Sector / Industry</div><div class="val" style="font-size:13px">${row.fundamentals.sector||'—'}<br><span style="font-size:11px;color:var(--muted)">${row.fundamentals.industry||''}</span></div></div>
+          <div class="rstat"><div class="lbl">Payout Ratio</div><div class="val">${row.fundamentals.payoutRatio!=null?(row.fundamentals.payoutRatio*100).toFixed(0)+'%':'—'}</div></div>
+          <div class="rstat"><div class="lbl">Beta</div><div class="val">${row.fundamentals.beta!=null?row.fundamentals.beta.toFixed(2):'—'}</div></div>
+          <div class="rstat"><div class="lbl">Analysten-Konsens</div><div class="val" style="font-size:13px">${row.fundamentals.recommendationKey&&row.fundamentals.recommendationKey!=='none'?row.fundamentals.recommendationKey+(row.fundamentals.numAnalysts?' ('+row.fundamentals.numAnalysts+')':''):'—'}</div></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7">
+          ${(()=>{
+            const sectorMed = sectorPayoutMedian.get(row.fundamentals.sector);
+            if(row.fundamentals.payoutRatio==null) return 'Keine Payout-Ratio von Yahoo verfügbar für diese Aktie.';
+            if(sectorMed==null) return `Payout Ratio: ${(row.fundamentals.payoutRatio*100).toFixed(0)}% — noch kein Sektor-Median verfügbar (zu wenige angereicherte Vergleichswerte im Sektor "${row.fundamentals.sector}").`;
+            const diff = row.fundamentals.payoutRatio - sectorMed;
+            const verdict = diff>0.2 ? 'deutlich ÜBER dem Sektor-Median — höheres Risiko, dass die Ausschüttung nicht aus dem laufenden Gewinn gedeckt ist.' : diff<-0.2 ? 'deutlich UNTER dem Sektor-Median — mehr Puffer im Vergleich zu Sektor-Kollegen.' : 'nah am Sektor-Median — unauffällig im Branchenvergleich.';
+            return `Payout Ratio ${(row.fundamentals.payoutRatio*100).toFixed(0)}% vs. Sektor-Median "${row.fundamentals.sector}" ${(sectorMed*100).toFixed(0)}% — ${verdict}`;
+          })()}
+        </p>
+      </div>` : `
+      <div class="report-section">
+        <p style="font-size:11px;color:var(--muted)">Noch keine Yahoo-Fundamentaldaten für diese Aktie angereichert (aktuell auf S&P 500 + Testbatch begrenzt).</p>
+      </div>`}
 
       <div class="disclaimer">
         <b>Methodology, not advice:</b> This score ranks historical payout durability, consistency, and track record depth — it is a backward-looking statistical read of already-paid dividends, not a forecast, rating, or recommendation to buy, sell, or hold. A high score describes a stable payment history; it does not guarantee future payments continue. All figures come from a verified, cached data pipeline built earlier in this session — nothing here is estimated or fabricated, but coverage is limited to what has been successfully scanned so far.
