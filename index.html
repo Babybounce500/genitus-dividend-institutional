@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GENITUS INSTITUTIONAL SCREENER</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#f4f7fb;--surface:#ffffff;--panel:#ffffff;--border:#d9e2ec;--accent:#0e7490;--gold:#b45309;--green:#15803d;--red:#b91c1c;--muted:#52606d;--text:#1e293b;--bright:#0f172a;--mono:'Space Mono',monospace;--sans:'Rajdhani',sans-serif;}
+    :root.dark-theme{--bg:#080c10;--surface:#0d1117;--panel:#111820;--border:#1e2d3d;--accent:#00d4ff;--gold:#f0c040;--green:#00ff88;--red:#ff3b5c;--muted:#7d92a8;--text:#c8d8e8;--bright:#ffffff;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;min-height:100vh;transition:background .25s,color .25s;}
+
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;}
+    .logo{display:flex;align-items:center;gap:12px;}
+    .logo-mark{width:32px;height:32px;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;color:var(--gold);}
+    .logo-text{font-family:var(--mono);font-size:13px;letter-spacing:3px;color:var(--bright);}
+    .logo-sub{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);display:block;margin-top:1px;}
+    #themeToggleBtn{background:none;border:1px solid var(--border);color:var(--accent);width:30px;height:30px;border-radius:2px;cursor:pointer;font-size:14px;}
+
+    .controls{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+    .field-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;display:block;}
+    select,input[type="text"],input[type="number"]{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;border-radius:2px;}
+    .btn{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:9px 14px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;border-radius:2px;text-transform:uppercase;}
+    .btn:hover{background:var(--gold);color:var(--bg);}
+
+    .methodology{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 20px;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.7;}
+    .methodology b{color:var(--gold);}
+
+    .content{max-width:1300px;margin:0 auto;padding:18px;}
+    .screener-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);}
+    .screener-table th{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;position:sticky;top:0;background:var(--panel);}
+    .screener-table th:hover{color:var(--gold);}
+    .screener-table td{padding:8px 10px;font-size:12px;border-bottom:1px solid rgba(125,146,168,0.15);}
+    .screener-table tr{cursor:pointer;}
+    .screener-table tr:hover{background:rgba(180,83,9,0.06);}
+    .sym{font-family:var(--mono);color:var(--accent);font-weight:700;}
+    .score-badge{font-family:var(--mono);font-weight:700;padding:3px 8px;border-radius:2px;display:inline-block;min-width:36px;text-align:center;}
+    .score-A{background:rgba(0,255,136,0.15);color:var(--green);}
+    .score-B{background:rgba(240,192,64,0.15);color:var(--gold);}
+    .score-C{background:rgba(255,59,92,0.12);color:var(--red);}
+    .empty-state{padding:60px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;}
+
+    /* REPORT MODAL */
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;align-items:center;justify-content:center;padding:16px;}
+    .modal.open{display:flex;}
+    .report-box{background:var(--surface);border:1px solid var(--gold);border-radius:4px;width:100%;max-width:880px;max-height:92vh;overflow-y:auto;}
+    .report-header{background:var(--panel);border-bottom:2px solid var(--gold);padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;}
+    .report-header h1{font-family:var(--mono);font-size:20px;color:var(--bright);letter-spacing:1px;}
+    .report-header .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;}
+    .report-close{font-family:var(--mono);font-size:20px;background:none;border:none;color:var(--muted);cursor:pointer;}
+    .report-body{padding:20px 24px;}
+    .report-grade{font-family:var(--mono);font-size:44px;font-weight:700;text-align:center;padding:10px;}
+    .report-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0;}
+    @media(max-width:600px){.report-stat-grid{grid-template-columns:repeat(2,1fr);}}
+    .rstat{background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:10px;}
+    .rstat .lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+    .rstat .val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--bright);}
+    .report-section{margin:18px 0;}
+    .report-section h3{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px;}
+    .chart-wrap{height:240px;position:relative;}
+    .factor-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+    .factor-row .flabel{width:170px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+    .factor-bar-bg{flex:1;height:14px;background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;}
+    .factor-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--green));}
+    .factor-row .fval{width:44px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--bright);}
+    .disclaimer{border-top:1px solid var(--border);margin-top:20px;padding-top:14px;font-size:10px;color:var(--muted);line-height:1.6;}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">Ψ</div>
+    <div><span class="logo-text">GENITUS</span><span class="logo-sub">INSTITUTIONAL SCREENER</span></div>
+  </div>
+  <button id="themeToggleBtn" title="Toggle theme">🌙</button>
+</header>
+
+<div class="controls">
+  <div><span class="field-label">Exchange</span><select id="exSelect" onchange="runScreen()"></select></div>
+  <div><span class="field-label">Min. Payment History</span><input type="number" id="minPayments" value="8" min="0" style="width:80px" onchange="runScreen()"></div>
+  <div><span class="field-label">Search</span><input type="text" id="searchInput" oninput="renderTable()" placeholder="Symbol or name..."></div>
+  <button class="btn" onclick="exportCSV()">EXPORT SCORED CSV</button>
+</div>
+
+<div class="methodology">
+  <b>Dividend Quality Score (0–100)</b>, four equally-weighted factors, computed entirely from the cached, verified payment history — no live data, no fabricated inputs:
+  <b>Streak</b> (consecutive years payout didn't shrink) · <b>Consistency</b> (inverse of year-to-year payout variability) · <b>Stability</b> (how close the latest payment sits to this stock's own historical norm — not how far, in either direction) · <b>Track Record</b> (depth of verified payment history). This ranks by <i>durability of the payout</i>, not by raw yield — a high headline yield with a low score is exactly the kind of thing this is built to flag.
+</div>
+
+<div class="content">
+  <table class="screener-table" id="screenerTable" style="display:none">
+    <thead><tr>
+      <th data-key="score">Score</th><th data-key="symbol">Symbol</th><th data-key="name">Name</th>
+      <th data-key="yieldPct">Yield</th><th data-key="streak">Streak</th><th data-key="count">Payments</th>
+    </tr></thead>
+    <tbody id="screenerBody"></tbody>
+  </table>
+  <div class="empty-state" id="emptyState">Select an exchange above to run the screener.</div>
+</div>
+
+<div class="modal" id="reportModal" onclick="closeReportOnBg(event)">
+  <div class="report-box">
+    <div class="report-header">
+      <div><h1 id="reportTitle">—</h1><div class="sub" id="reportSub">Dividend Quality Report</div></div>
+      <button class="report-close" onclick="closeReport()">✕</button>
+    </div>
+    <div class="report-body" id="reportBody"></div>
+  </div>
+</div>
+
+<script>
+  const SUMMARY_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-summary.csv';
+  const HISTORY_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-history.csv';
+
+  (function(){
+    const KEY='genitusTheme:institutional';
+    function applyTheme(t){
+      document.documentElement.classList.toggle('dark-theme', t==='dark');
+      localStorage.setItem(KEY,t);
+      const btn=document.getElementById('themeToggleBtn');
+      if(btn) btn.textContent = t==='dark' ? '☀' : '🌙';
+    }
+    window.__theme = localStorage.getItem(KEY) || 'light';
+    applyTheme(window.__theme);
+    document.addEventListener('DOMContentLoaded', function(){
+      const btn=document.getElementById('themeToggleBtn');
+      if(btn) btn.addEventListener('click', function(){
+        window.__theme = window.__theme==='dark' ? 'light' : 'dark';
+        applyTheme(window.__theme);
+      });
+    });
+  })();
+
+  function parseCSVLine(line){
+    const out=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(inQ){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=c; }
+      else { if(c===','){ out.push(cur); cur=''; } else if(c==='"'){ inQ=true; } else cur+=c; }
+    }
+    out.push(cur); return out;
+  }
+  function csvEscape(v){ v=String(v==null?'':v); return /[",\n;]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+
+  let summaryByExchange = new Map();
+  let historyBySymbol = new Map();
+  let cacheReady = null;
+  function loadCache(){
+    if(cacheReady) return cacheReady;
+    cacheReady = Promise.all([
+      fetch(SUMMARY_URL).then(r=>r.text()),
+      fetch(HISTORY_URL).then(r=>r.text())
+    ]).then(([sText,hText])=>{
+      const sLines = sText.split('\n').filter(Boolean);
+      for(let i=1;i<sLines.length;i++){
+        const [fullSymbol,name,type,ex,count,streakYears,streakDir,yieldPct,price,lastDate,lastAmount,lastCurrency] = parseCSVLine(sLines[i]);
+        if(!fullSymbol||!ex) continue;
+        if(!summaryByExchange.has(ex)) summaryByExchange.set(ex, []);
+        summaryByExchange.get(ex).push({
+          fullSymbol, name:(name||'').trim(), type, ex,
+          count: parseInt(count)||0, streakYears: parseInt(streakYears)||1, streakDir: streakDir||'new',
+          yieldPct: parseFloat(yieldPct)||0, price: price?parseFloat(price):null,
+          lastDate: lastDate||'', lastAmount: parseFloat(lastAmount)||0, lastCurrency: lastCurrency||''
+        });
+      }
+      const hLines = hText.split('\n').filter(Boolean);
+      for(let i=1;i<hLines.length;i++){
+        const [fullSymbol,date,amount,currency,price,pct] = parseCSVLine(hLines[i]);
+        if(!fullSymbol) continue;
+        if(!historyBySymbol.has(fullSymbol)) historyBySymbol.set(fullSymbol, []);
+        historyBySymbol.get(fullSymbol).push({ date, value:parseFloat(amount)||0, currency:currency||'', price: price?parseFloat(price):null, pctOfPrice: pct?parseFloat(pct):null });
+      }
+    }).catch(e=>console.warn('Cache load failed:', e.message));
+    return cacheReady;
+  }
+
+  const EXCHANGES = [
+    {g:'🇺🇸 United States',opts:['US','NYSE','NASDAQ','AMEX','PINK','OTCQB','OTCQX','BATS']},
+    {g:'🇨🇦 Canada',opts:['TO','V','NEO']},
+    {g:'🌎 Latin America',opts:['MX','SA','BA','SN','LIM']},
+    {g:'🇬🇧 United Kingdom',opts:['LSE','IL']},
+    {g:'🇩🇪 Germany',opts:['XETRA','F','STU','DU','BE','MU','HM','HA']},
+    {g:'🇱🇺 Luxembourg',opts:['LU']}, {g:'🇮🇪 Ireland',opts:['IR']},
+    {g:'🇫🇷 France',opts:['PA']}, {g:'🇳🇱 Netherlands',opts:['AS']}, {g:'🇧🇪 Belgium',opts:['BR']},
+    {g:'🇵🇹 Portugal',opts:['LS']}, {g:'🇨🇭 Switzerland',opts:['SW']}, {g:'🇪🇸 Spain',opts:['MC']},
+    {g:'🇦🇹 Austria',opts:['VI']}, {g:'🇬🇷 Greece',opts:['AT']},
+    {g:'🇸🇪 Scandinavia',opts:['ST','OL','CO','HE']},
+    {g:'🇵🇱 Eastern Europe',opts:['WAR','PR','BUD','RO','ZSE']},
+    {g:'🇷🇺 Russia',opts:['MCX']}, {g:'🇹🇷 Turkey',opts:['IS']}, {g:'🇮🇱 Israel',opts:['TA']},
+    {g:'🇿🇦 Africa',opts:['JSE','EGX','BC','XNAI','XZIM','XBOT','LUSE','GSE','USE','RSE','DSE','SEM','MSE','XNSA']},
+    {g:'🇭🇰 Hong Kong',opts:['HK']}, {g:'🇨🇳 China',opts:['SHG','SHE']},
+    {g:'🇰🇷 Korea',opts:['KO','KQ']}, {g:'🇮🇳 India',opts:['NSE']}, {g:'🇵🇰 Pakistan',opts:['KAR']},
+    {g:'🇱🇰 Sri Lanka',opts:['CM']},
+    {g:'🇸🇬 Southeast Asia',opts:['KLSE','BK','JK','VN','PSE']},
+    {g:'🇹🇼 Taiwan',opts:['TW','TWO']}, {g:'🇦🇺 Australia',opts:['AU']},
+  ];
+  function buildExchangeSelect(){
+    document.getElementById('exSelect').innerHTML = '<option value="">— Select Market —</option>' +
+      EXCHANGES.map(g=>`<optgroup label="${g.g}">${g.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</optgroup>`).join('');
+  }
+
+  function mean(arr){ return arr.reduce((s,v)=>s+v,0)/arr.length; }
+  function stddev(arr, m){ return Math.sqrt(arr.reduce((s,v)=>s+(v-m)*(v-m),0)/arr.length) || 0; }
+
+  // ── SCORING ──
+  function computeScore(row){
+    const history = (historyBySymbol.get(row.fullSymbol)||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const priced = history.filter(h=>h.pctOfPrice!=null && h.price>0);
+
+    // Factor 1: Streak (25 pts) — consecutive non-decreasing years, direction-weighted
+    const dirMult = row.streakDir==='up' ? 1.0 : row.streakDir==='flat' ? 0.85 : row.streakDir==='down' ? 0.45 : 0.3;
+    const streakScore = Math.min(row.streakYears,10)/10 * 25 * dirMult;
+
+    // Factor 2: Consistency (25 pts) — inverse coefficient of variation of annual totals
+    const byYear = {};
+    history.forEach(h=>{ const y=new Date(h.date).getFullYear(); if(!y) return; byYear[y]=(byYear[y]||0)+h.value; });
+    const yearTotals = Object.values(byYear);
+    let consistencyScore = 12.5; // neutral default if too little history
+    if(yearTotals.length>=2){
+      const ym = mean(yearTotals), ysd = stddev(yearTotals, ym);
+      const cv = ym>0 ? ysd/ym : 1;
+      consistencyScore = Math.max(0, 25*(1-Math.min(cv,1)));
+    }
+
+    // Factor 3: Stability (25 pts) — how close the latest payment sits to this stock's OWN norm
+    let stabilityScore = 12.5, zScore = null;
+    if(priced.length>=3){
+      const yields = priced.map(h=>h.pctOfPrice);
+      const m = mean(yields), sd = stddev(yields, m);
+      const latest = yields[yields.length-1];
+      zScore = sd>0 ? (latest-m)/sd : 0;
+      stabilityScore = Math.max(0, 25*(1-Math.min(Math.abs(zScore)/3,1)));
+    }
+
+    // Factor 4: Track record depth (25 pts) — payment count, saturating at 40 (~10y quarterly)
+    const trackScore = Math.min(row.count/40,1)*25;
+
+    const total = streakScore+consistencyScore+stabilityScore+trackScore;
+    return { total, streakScore, consistencyScore, stabilityScore, trackScore, zScore, priced, yearTotals };
+  }
+
+  let scoredList = [];
+  let sortKey='score', sortDir='desc';
+
+  async function runScreen(){
+    const ex = document.getElementById('exSelect').value;
+    if(!ex){ scoredList=[]; document.getElementById('screenerTable').style.display='none'; document.getElementById('emptyState').style.display='block'; return; }
+    await loadCache();
+    const minPay = parseInt(document.getElementById('minPayments').value)||0;
+    const rows = (summaryByExchange.get(ex)||[]).filter(r=>r.count>=minPay);
+    scoredList = rows.map(r=>{
+      const s = computeScore(r);
+      return {...r, score:s.total, factors:s};
+    });
+    document.getElementById('screenerTable').style.display = scoredList.length ? 'table' : 'none';
+    document.getElementById('emptyState').style.display = scoredList.length ? 'none' : 'block';
+    if(!scoredList.length) document.getElementById('emptyState').textContent = 'No symbols meet the minimum payment-history filter for this exchange.';
+    renderTable();
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    document.querySelectorAll('th[data-key]').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const key = th.dataset.key;
+        if(sortKey===key) sortDir = sortDir==='desc'?'asc':'desc'; else { sortKey=key; sortDir='desc'; }
+        renderTable();
+      });
+    });
+  });
+
+  function scoreClass(score){ return score>=70 ? 'score-A' : score>=45 ? 'score-B' : 'score-C'; }
+
+  function renderTable(){
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    let rows = scoredList.filter(r=>!q || r.fullSymbol.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+    const dir = sortDir==='asc'?1:-1;
+    rows = rows.slice().sort((a,b)=>{
+      let av,bv;
+      if(sortKey==='score'){ av=a.score; bv=b.score; }
+      else if(sortKey==='symbol'){ av=a.fullSymbol; bv=b.fullSymbol; }
+      else if(sortKey==='name'){ av=a.name; bv=b.name; }
+      else if(sortKey==='yieldPct'){ av=a.yieldPct; bv=b.yieldPct; }
+      else if(sortKey==='streak'){ av=a.streakYears; bv=b.streakYears; }
+      else if(sortKey==='count'){ av=a.count; bv=b.count; }
+      if(typeof av==='string') return av.localeCompare(bv)*dir;
+      return (av-bv)*dir;
+    });
+    document.getElementById('screenerBody').innerHTML = rows.slice(0,500).map(r=>`
+      <tr onclick="openReport('${r.fullSymbol}')">
+        <td><span class="score-badge ${scoreClass(r.score)}">${r.score.toFixed(0)}</span></td>
+        <td><span class="sym">${r.fullSymbol}</span></td>
+        <td>${r.name}</td>
+        <td>${r.yieldPct.toFixed(2)}%</td>
+        <td>${r.streakYears}y ${r.streakDir}</td>
+        <td>${r.count}</td>
+      </tr>`).join('');
+  }
+
+  function exportCSV(){
+    if(!scoredList.length) return;
+    const rows = scoredList.map(r=>[r.fullSymbol,r.name,r.type,r.ex,r.score.toFixed(1),r.yieldPct.toFixed(2),r.streakYears,r.streakDir,r.count]);
+    const csv = 'Symbol,Name,Type,Exchange,QualityScore,YieldPct,StreakYears,StreakDirection,PaymentCount\n'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download=`dividend_quality_screen_${document.getElementById('exSelect').value}.csv`;
+    a.click();
+  }
+
+  let radarChartInstance=null;
+  function openReport(fullSymbol){
+    const row = scoredList.find(r=>r.fullSymbol===fullSymbol);
+    if(!row) return;
+    const f = row.factors;
+    const fmt=n=>{ const v=parseFloat(n); return isNaN(v)?'—':(v<0.01?v.toFixed(6):v.toFixed(2)); };
+
+    document.getElementById('reportTitle').textContent = `${row.fullSymbol} — ${row.name}`;
+    document.getElementById('reportSub').textContent = `Dividend Quality Report · ${row.ex} · generated from verified cache`;
+    const grade = row.score>=70?'var(--green)':row.score>=45?'var(--gold)':'var(--red)';
+
+    document.getElementById('reportBody').innerHTML = `
+      <div class="report-grade" style="color:${grade}">${row.score.toFixed(0)} / 100</div>
+      <div class="report-stat-grid">
+        <div class="rstat"><div class="lbl">Trailing Yield</div><div class="val">${row.yieldPct.toFixed(2)}%</div></div>
+        <div class="rstat"><div class="lbl">Current Price</div><div class="val">${row.price?fmt(row.price):'—'}</div></div>
+        <div class="rstat"><div class="lbl">Streak</div><div class="val">${row.streakYears}y ${row.streakDir}</div></div>
+        <div class="rstat"><div class="lbl">Verified Payments</div><div class="val">${row.count}</div></div>
+      </div>
+
+      <div class="report-section">
+        <h3>Factor Breakdown</h3>
+        <div class="factor-row"><span class="flabel">Streak (payout durability)</span><div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${f.streakScore/25*100}%"></div></div><span class="fval">${f.streakScore.toFixed(1)}</span></div>
+        <div class="factor-row"><span class="flabel">Consistency (payout stability)</span><div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${f.consistencyScore/25*100}%"></div></div><span class="fval">${f.consistencyScore.toFixed(1)}</span></div>
+        <div class="factor-row"><span class="flabel">Stability (vs. own norm)</span><div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${f.stabilityScore/25*100}%"></div></div><span class="fval">${f.stabilityScore.toFixed(1)}</span></div>
+        <div class="factor-row"><span class="flabel">Track record depth</span><div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${f.trackScore/25*100}%"></div></div><span class="fval">${f.trackScore.toFixed(1)}</span></div>
+      </div>
+
+      <div class="report-section">
+        <h3>Factor Radar</h3>
+        <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+      </div>
+
+      <div class="report-section">
+        <p style="font-size:12px;color:var(--muted);line-height:1.7">
+          ${f.zScore!=null ? `Latest payment sits at <b style="color:var(--text)">${f.zScore>=0?'+':''}${f.zScore.toFixed(2)}σ</b> vs. this stock's own historical yield distribution — ${Math.abs(f.zScore)<1?'trading within its normal range.':f.zScore>0?'unusually cheap relative to its own history (higher relative yield than usual).':'unusually expensive relative to its own history (lower relative yield than usual).'}` : 'Not enough priced history yet for a stability read.'}
+          ${f.yearTotals.length>=2 ? ` Annual payout has moved between ${Math.min(...f.yearTotals).toFixed(2)} and ${Math.max(...f.yearTotals).toFixed(2)} (own currency) across ${f.yearTotals.length} tracked years.` : ''}
+        </p>
+      </div>
+
+      <div class="disclaimer">
+        <b>Methodology, not advice:</b> This score ranks historical payout durability, consistency, and track record depth — it is a backward-looking statistical read of already-paid dividends, not a forecast, rating, or recommendation to buy, sell, or hold. A high score describes a stable payment history; it does not guarantee future payments continue. All figures come from a verified, cached data pipeline built earlier in this session — nothing here is estimated or fabricated, but coverage is limited to what has been successfully scanned so far.
+      </div>
+    `;
+
+    document.getElementById('reportModal').classList.add('open');
+    document.body.style.overflow='hidden';
+
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    if(radarChartInstance) radarChartInstance.destroy();
+    radarChartInstance = new Chart(ctx, {
+      type:'radar',
+      data:{ labels:['Streak','Consistency','Stability','Track Record'],
+        datasets:[{ label: row.fullSymbol, data:[f.streakScore,f.consistencyScore,f.stabilityScore,f.trackScore], backgroundColor:'rgba(240,192,64,0.25)', borderColor:'#f0c040', pointBackgroundColor:'#f0c040' }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        scales:{ r:{ min:0, max:25, ticks:{ color:'#7d92a8', backdropColor:'transparent', font:{size:8} }, grid:{ color:'rgba(125,146,168,0.2)' }, angleLines:{ color:'rgba(125,146,168,0.2)' }, pointLabels:{ color:'#7d92a8', font:{family:'Space Mono',size:10} } } },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  }
+  function closeReport(){ document.getElementById('reportModal').classList.remove('open'); document.body.style.overflow=''; }
+  function closeReportOnBg(e){ if(e.target===document.getElementById('reportModal')) closeReport(); }
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeReport(); });
+
+  buildExchangeSelect();
+</script>
+</body>
+</html>
