@@ -95,6 +95,8 @@
     <thead><tr>
       <th data-key="score">Score</th><th data-key="symbol">Symbol</th><th data-key="name">Name</th>
       <th data-key="yieldPct">Yield</th><th data-key="streak">Streak</th><th data-key="count">Payments</th>
+      <th data-key="streakScore">Streak-Score</th><th data-key="consistencyScore">Consistency-Score</th>
+      <th data-key="stabilityScore">Stability-Score</th><th data-key="trackScore">Track-Score</th>
     </tr></thead>
     <tbody id="screenerBody"></tbody>
   </table>
@@ -285,6 +287,10 @@
       else if(sortKey==='yieldPct'){ av=a.yieldPct; bv=b.yieldPct; }
       else if(sortKey==='streak'){ av=a.streakYears; bv=b.streakYears; }
       else if(sortKey==='count'){ av=a.count; bv=b.count; }
+      else if(sortKey==='streakScore'){ av=a.factors.streakScore; bv=b.factors.streakScore; }
+      else if(sortKey==='consistencyScore'){ av=a.factors.consistencyScore; bv=b.factors.consistencyScore; }
+      else if(sortKey==='stabilityScore'){ av=a.factors.stabilityScore; bv=b.factors.stabilityScore; }
+      else if(sortKey==='trackScore'){ av=a.factors.trackScore; bv=b.factors.trackScore; }
       if(typeof av==='string') return av.localeCompare(bv)*dir;
       return (av-bv)*dir;
     });
@@ -296,13 +302,17 @@
         <td>${r.yieldPct.toFixed(2)}%</td>
         <td>${r.streakYears}y ${r.streakDir}</td>
         <td>${r.count}</td>
+        <td>${r.factors.streakScore.toFixed(1)}</td>
+        <td>${r.factors.consistencyScore.toFixed(1)}</td>
+        <td>${r.factors.stabilityScore.toFixed(1)}</td>
+        <td>${r.factors.trackScore.toFixed(1)}</td>
       </tr>`).join('');
   }
 
   function exportCSV(){
     if(!scoredList.length) return;
-    const rows = scoredList.map(r=>[r.fullSymbol,r.name,r.type,r.ex,r.score.toFixed(1),r.yieldPct.toFixed(2),r.streakYears,r.streakDir,r.count]);
-    const csv = 'Symbol,Name,Type,Exchange,QualityScore,YieldPct,StreakYears,StreakDirection,PaymentCount\n'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+    const rows = scoredList.map(r=>[r.fullSymbol,r.name,r.type,r.ex,r.score.toFixed(1),r.yieldPct.toFixed(2),r.streakYears,r.streakDir,r.count,r.factors.streakScore.toFixed(1),r.factors.consistencyScore.toFixed(1),r.factors.stabilityScore.toFixed(1),r.factors.trackScore.toFixed(1)]);
+    const csv = 'Symbol,Name,Type,Exchange,QualityScore,YieldPct,StreakYears,StreakDirection,PaymentCount,StreakScore,ConsistencyScore,StabilityScore,TrackScore\n'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     a.download=`dividend_quality_screen_${document.getElementById('exSelect').value}.csv`;
