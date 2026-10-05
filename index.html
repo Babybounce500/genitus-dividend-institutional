@@ -170,7 +170,7 @@
         summaryByExchange.get(ex).push({
           fullSymbol, name:(name||'').trim(), type, ex,
           count: parseInt(count)||0, streakYears: parseInt(streakYears)||1, streakDir: streakDir||'new',
-          yieldPct: parseFloat(yieldPct)||0, price: price?parseFloat(price):null,
+          yieldPct: (parseFloat(yieldPct)||0)>50?0:(parseFloat(yieldPct)||0), price: price?parseFloat(price):null,
           lastDate: lastDate||'', lastAmount: parseFloat(lastAmount)||0, lastCurrency: lastCurrency||''
         });
       }
