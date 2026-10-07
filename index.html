@@ -250,7 +250,14 @@
     const currentYear = new Date().getFullYear();
     const byYear = {};
     history.forEach(h=>{ const y=new Date(h.date).getFullYear(); if(!y || y>=currentYear) return; byYear[y]=(byYear[y]||0)+h.value; });
-    const yearTotals = Object.values(byYear); // the still-incomplete current year would otherwise read as a false "down" outlier for every active payer
+    // Use only the most recent UNBROKEN run of years -- pooling amounts from
+    // before a real suspension (e.g. AAPL: paid 1987-1995, nothing 1996-2011,
+    // resumed 2012) would blend two different dollar scales into one
+    // artificially-inflated variance, unfairly depressing Consistency.
+    const allYearKeys = Object.keys(byYear).map(Number).sort((a,b)=>a-b);
+    let runStart = allYearKeys.length-1;
+    while(runStart>0 && allYearKeys[runStart]-allYearKeys[runStart-1]===1) runStart--;
+    const yearTotals = allYearKeys.slice(runStart).map(y=>byYear[y]);
     let consistencyScore = 12.5; // neutral default if too little history
     if(yearTotals.length>=2){
       const ym = mean(yearTotals), ysd = stddev(yearTotals, ym);
