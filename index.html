@@ -247,9 +247,10 @@
     const streakScore = Math.min(row.streakYears,10)/10 * 25 * dirMult;
 
     // Factor 2: Consistency (25 pts) — inverse coefficient of variation of annual totals
+    const currentYear = new Date().getFullYear();
     const byYear = {};
-    history.forEach(h=>{ const y=new Date(h.date).getFullYear(); if(!y) return; byYear[y]=(byYear[y]||0)+h.value; });
-    const yearTotals = Object.values(byYear);
+    history.forEach(h=>{ const y=new Date(h.date).getFullYear(); if(!y || y>=currentYear) return; byYear[y]=(byYear[y]||0)+h.value; });
+    const yearTotals = Object.values(byYear); // the still-incomplete current year would otherwise read as a false "down" outlier for every active payer
     let consistencyScore = 12.5; // neutral default if too little history
     if(yearTotals.length>=2){
       const ym = mean(yearTotals), ysd = stddev(yearTotals, ym);
