@@ -240,7 +240,9 @@
   // ── SCORING ──
   function computeScore(row){
     const history = (historyBySymbol.get(row.fullSymbol)||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
-    const priced = history.filter(h=>h.pctOfPrice!=null && h.price>0);
+    // Implausible single points (>50% implied yield) excluded -- otherwise a
+    // single stale/corrupt price would dominate the Stability Z-Score below.
+    const priced = history.filter(h=>h.pctOfPrice!=null && h.price>0 && h.pctOfPrice<=50);
 
     // Factor 1: Streak (25 pts) — consecutive non-decreasing years, direction-weighted
     const dirMult = row.streakDir==='up' ? 1.0 : row.streakDir==='flat' ? 0.85 : row.streakDir==='down' ? 0.45 : 0.3;
